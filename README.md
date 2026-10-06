@@ -503,6 +503,45 @@ To round to the nearest cash value in currencies without small denominations:
 Money.from_cents(11_11, "CHF").to_nearest_cash_value.format # => "CHF 11.10"
 ```
 
+### Matrix Rounding
+
+When a report rounds every cell of a matrix individually, the rounded row and
+column subtotals usually stop adding up. `Money::MatrixRounding` performs
+controlled rounding: every cell is rounded down or up to a whole number of
+subunits while exactly matching predetermined row and column totals. Among
+all valid roundings it picks the one with the smallest total absolute
+rounding error, breaking remaining ties deterministically in row-major order.
+
+```ruby
+result = Money::MatrixRounding.round(
+  [[Money.from_cents(Rational(10, 3), "USD"), Money.from_cents(Rational(20, 3), "USD")]],
+  [10],   # row totals, in whole subunits
+  [3, 7], # column totals, in whole subunits
+)
+result.feasible? # => true
+result.matrix    # => [[#<Money fractional:3>, #<Money fractional:7>]]
+```
+
+Cells may be `Money` (single currency, any `subunit_to_unit`), `Integer`,
+`Rational` or `BigDecimal` amounts in subunits; `Float` is rejected because it
+cannot represent exact amounts. With exact numeric cells the total absolute
+rounding error is exact as well:
+
+```ruby
+result = Money::MatrixRounding.round([[Rational(10, 3), Rational(20, 3)]], [10], [3, 7])
+result.matrix # => [[3, 7]]
+result.error  # => Rational(2, 3)
+```
+
+If the totals are mutually inconsistent, the result reports the conflict
+instead of silently adjusting them:
+
+```ruby
+result = Money::MatrixRounding.round([[Rational(1, 2)]], [1], [0])
+result.conflict?  # => true
+result.conflicts  # => ["row totals sum to 1 but column totals sum to 0"]
+```
+
 ## Ruby on Rails
 
 To integrate money in a Rails application use [money-rails](https://github.com/RubyMoney/money-rails).

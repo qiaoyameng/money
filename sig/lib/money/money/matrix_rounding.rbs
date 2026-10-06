@@ -1,0 +1,32 @@
+class Money
+  # Solves the controlled (matrix) rounding problem: given a matrix of exact
+  # amounts expressed in subunits of a single currency, plus predetermined
+  # whole-subunit totals for every row and every column, round each cell down
+  # or up to a whole number of subunits so that both sets of marginal totals
+  # are matched exactly.
+  class MatrixRounding
+    # The outcome of MatrixRounding.round.
+    class Result
+      # The rounded matrix, or nil when the totals are infeasible.
+      attr_reader matrix: Array[Array[Money | Integer]]?
+
+      # The total absolute rounding error, or nil when the totals are infeasible.
+      attr_reader error: Rational?
+
+      # Reasons why the totals cannot be satisfied.
+      attr_reader conflicts: Array[String]
+
+      def initialize: (matrix: Array[Array[Money | Integer]]?, error: Rational?, conflicts: Array[String]) -> void
+
+      # Whether a rounding satisfying all totals was found.
+      def feasible?: () -> bool
+
+      # Whether the totals are mutually inconsistent.
+      def conflict?: () -> bool
+    end
+
+    # Rounds every cell of `matrix` to its floor or ceiling in whole subunits
+    # while exactly matching `row_totals` and `column_totals`.
+    def self.round: (Array[Array[Money | Integer | Rational | BigDecimal]] matrix, Array[Money | Integer | Rational | BigDecimal] row_totals, Array[Money | Integer | Rational | BigDecimal] column_totals) -> Result
+  end
+end
