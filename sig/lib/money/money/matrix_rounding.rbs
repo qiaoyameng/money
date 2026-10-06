@@ -1,0 +1,38 @@
+class Money
+  # Rounds a matrix of exact amounts to whole subunits while keeping
+  # pre-determined integer row and column totals (controlled rounding).
+  #
+  # Every result cell is the floor or the ceiling of the exact amount, the
+  # rounded cells add up to the given totals exactly, and among all such
+  # roundings the total absolute rounding error is minimized. Ties are
+  # broken lexicographically in row-major order.
+  class MatrixRounding
+    # Raised by .round! when the given totals cannot be satisfied.
+    class ConflictError < StandardError
+    end
+
+    # The outcome of MatrixRounding.round.
+    class Result
+      # The rounded matrix (whole subunits) when feasible, otherwise nil.
+      attr_reader cells: Array[Array[Integer]]?
+
+      # Describes the conflict when the totals cannot be satisfied.
+      attr_reader message: String?
+
+      # Whether a rounding satisfying all totals was found.
+      def feasible?: () -> bool
+
+      # Whether the totals conflict, so no feasible rounding exists.
+      def conflict?: () -> bool
+    end
+
+    # Rounds `matrix` to whole subunits, keeping the given totals.
+    #
+    # Cells are exact amounts in subunits (Integer, Rational, BigDecimal,
+    # or Money of a single currency); totals are Integers in subunits.
+    def self.round: (Array[Array[Integer | Rational | BigDecimal | Money]] matrix, Array[Integer] row_totals, Array[Integer] column_totals) -> Result
+
+    # Like .round, but raises ConflictError when there is no solution.
+    def self.round!: (Array[Array[Integer | Rational | BigDecimal | Money]] matrix, Array[Integer] row_totals, Array[Integer] column_totals) -> Array[Array[Integer]]
+  end
+end

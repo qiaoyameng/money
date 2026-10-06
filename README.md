@@ -503,6 +503,27 @@ To round to the nearest cash value in currencies without small denominations:
 Money.from_cents(11_11, "CHF").to_nearest_cash_value.format # => "CHF 11.10"
 ```
 
+### Matrix rounding
+
+When a report shows a matrix of rounded amounts next to rounded row and column totals, rounding every cell independently usually makes the cells disagree with the margins. `Money::MatrixRounding` rounds every cell down or up to a whole subunit while keeping the given totals exact:
+
+```ruby
+result = Money::MatrixRounding.round(
+  [
+    [BigDecimal("1.4"), BigDecimal("1.6")],
+    [BigDecimal("2.5"), BigDecimal("0.5")],
+  ],
+  [3, 3], # row totals, in subunits
+  [4, 2], # column totals, in subunits
+)
+result.feasible? # => true
+result.cells     # => [[1, 2], [3, 0]]
+```
+
+Among all roundings that satisfy the totals, the result minimizes the total absolute rounding error; remaining ties are broken lexicographically in row-major order. When the totals cannot be satisfied, the result is a conflict (`result.conflict?`) and the totals are never adjusted silently — use `Money::MatrixRounding.round!` to raise `Money::MatrixRounding::ConflictError` instead.
+
+Cells accept `Integer`, `Rational`, `BigDecimal`, or `Money` amounts of a single currency (never `Float`), and all computation happens in whole subunits, so negative amounts and currencies with a non-decimal `subunit_to_unit` work unchanged. The optimum is found with a minimum-cost flow, not by enumerating the 2^k candidate roundings, so large matrices are solved in polynomial time.
+
 ## Ruby on Rails
 
 To integrate money in a Rails application use [money-rails](https://github.com/RubyMoney/money-rails).

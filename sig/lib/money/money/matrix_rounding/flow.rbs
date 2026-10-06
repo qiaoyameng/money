@@ -1,0 +1,20 @@
+class Money
+  class MatrixRounding
+    # Minimum-cost flow on the bipartite rounding network, used
+    # internally by MatrixRounding.
+    #
+    # @api private
+    class Flow
+      def initialize: (Integer rows, Integer cols, Array[Integer] row_needs, Array[Integer] col_needs, Hash[[Integer, Integer], Integer] costs) -> void
+
+      # Sends flow up to the required amount and returns the achieved flow.
+      def run: () -> Integer
+
+      def rounded_up?: (Integer row, Integer column) -> bool
+
+      def unsatisfied_rows: () -> Array[Integer]
+
+      def unsatisfied_columns: () -> Array[Integer]
+    end
+  end
+end
