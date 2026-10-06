@@ -447,6 +447,23 @@ implementations.
 
 There are several formatting rules for when `Money#format` is called. For more information, check out the [formatting module source](https://github.com/RubyMoney/money/blob/main/lib/money/money/formatter.rb), or read the latest release's [rdoc version](https://www.rubydoc.info/gems/money/Money/Formatter).
 
+If you need to process the individual segments of a formatted price (for
+example in a frontend), `Money#format_parts` decomposes the output into
+typed parts. Each part carries a `type` (such as `:symbol`, `:whole`,
+`:thousands_separator`, `:decimal_mark`, `:decimal`, `:sign`, `:currency`,
+`:free_text`, `:literal` or `:html_tag`), the raw `text`, an `html` flag
+marking HTML markup or escaped entities, and a `range` of Unicode character
+offsets into the full string. Concatenating the `text` of all parts always
+equals `Money#format` with the same rules:
+
+```ruby
+Money.from_cents(123_456_78, "USD").format_parts
+#=> [#<struct Money::Formatter::Part type=:symbol, text="$", range=0...1, html=false>,
+#    #<struct Money::Formatter::Part type=:whole, text="123", range=1...4, html=false>,
+#    #<struct Money::Formatter::Part type=:thousands_separator, text=",", range=4...5, html=false>,
+#    ...]
+```
+
 If you wish to format money according to the EU's [Rules for expressing monetary units](https://style-guide.europa.eu/en/content/-/isg/topic?identifier=7.3.3-rules-for-expressing-monetary-units#id370303__id370303_PositionISO) in either English, Irish, Latvian or Maltese:
 
 ```ruby

@@ -1,5 +1,33 @@
 class Money
   class Formatter
+    # A single segment of a formatted money string, as returned by
+    # {Money#format_parts}.
+    class Part < Struct[untyped]
+      # @!attribute [r] type
+      #   @return [Symbol] the kind of segment, one of +:free_text+, +:sign+,
+      #     +:symbol+, +:whole+, +:thousands_separator+, +:decimal_mark+,
+      #     +:decimal+, +:currency+, +:literal+ or +:html_tag+.
+      attr_reader type: Symbol
+
+      # @!attribute [r] text
+      #   @return [String] the raw text of the segment as it appears in the
+      #     formatted output.
+      attr_reader text: String
+
+      # @!attribute [rw] range
+      #   @return [Range<Integer>] the half-open character range the segment
+      #     occupies in the full formatted string, counted in Unicode
+      #     characters (not bytes).
+      attr_accessor range: Range[Integer]
+
+      # @!attribute [r] html
+      #   @return [Boolean] whether the text is HTML markup or an
+      #     HTML-escaped entity.
+      attr_reader html: bool
+
+      def html?: () -> bool
+    end
+
     DEFAULTS: Hash[Symbol, string]
 
     # Creates a formatted price string according to several rules.
@@ -171,6 +199,13 @@ class Money
 
     def to_s: () -> string
 
+    # Returns the formatted price as a list of typed segments, in output
+    # order. Concatenating the +text+ of every part always equals {#to_s}
+    # for the same formatting rules.
+    #
+    # @return [Array<Part>]
+    def parts: () -> Array[Part]
+
     def thousands_separator: () -> string
 
     def decimal_mark: () -> string
@@ -187,19 +222,27 @@ class Money
 
     attr_reader rules: FormattingRules
 
-    def format_number: () -> string
+    def build_parts: () -> Array[Part]
 
-    def append_sign: (untyped formatted_number) -> string
+    def format_number_parts: () -> Array[Part]
 
-    def append_currency_symbol: (untyped formatted_number) -> string
+    def wrap_number_parts: (Array[Part] number_parts) -> Array[Part]
+
+    def append_sign_parts: (Array[Part] number_parts) -> Array[Part]
+
+    def expand_format_template: (String template, Array[Part] unit_parts, Array[Part] number_parts) -> Array[Part]
+
+    def append_currency_symbol_parts: (Array[Part] parts) -> Array[Part]
 
     def show_free_text?: () -> untyped
 
-    def html_wrap: (string string, string class_name) -> ::String
+    def html_wrap_parts: (Array[Part] parts, string class_name) -> Array[Part]
 
     def free_text: () -> (untyped | "free")
 
-    def format_whole_part: (untyped value) -> untyped
+    def format_whole_parts: (untyped value) -> Array[Part]
+
+    def html_entity_symbol?: (untyped symbol_value) -> bool
 
     def extract_whole_and_decimal_parts: () -> Array[string]
 

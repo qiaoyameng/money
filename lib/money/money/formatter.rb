@@ -4,6 +4,29 @@ require "money/money/formatting_rules"
 
 class Money
   class Formatter
+    # A single segment of a formatted money string, as returned by
+    # {Money#format_parts}.
+    #
+    # @!attribute [r] type
+    #   @return [Symbol] the kind of segment, one of +:free_text+, +:sign+,
+    #     +:symbol+, +:whole+, +:thousands_separator+, +:decimal_mark+,
+    #     +:decimal+, +:currency+, +:literal+ or +:html_tag+.
+    # @!attribute [r] text
+    #   @return [String] the raw text of the segment as it appears in the
+    #     formatted output.
+    # @!attribute [r] range
+    #   @return [Range<Integer>] the half-open character range the segment
+    #     occupies in the full formatted string, counted in Unicode
+    #     characters (not bytes).
+    # @!attribute [r] html
+    #   @return [Boolean] whether the text is HTML markup or an HTML-escaped
+    #     entity (e.g. a wrapper tag or a currency's +html_entity+ symbol).
+    Part = Struct.new(:type, :text, :range, :html, keyword_init: true) do
+      def html?
+        !!html
+      end
+    end
+
     DEFAULTS = {
       thousands_separator: "",
       decimal_mark: ".",
@@ -194,11 +217,24 @@ class Money
     end
 
     def to_s
-      return free_text if show_free_text?
+      parts.map(&:text).join
+    end
 
-      result = format_number
-      formatted = append_sign(result)
-      append_currency_symbol(formatted)
+    # Returns the formatted price as a list of typed segments, in output
+    # order. Concatenating the +text+ of every part always equals {#to_s}
+    # for the same formatting rules.
+    #
+    # @return [Array<Part>]
+    def parts
+      @parts ||= begin
+        offset = 0
+
+        build_parts.each do |part|
+          part.range = offset...(offset + part.text.length)
+          offset = part.range.end
+          part.freeze
+        end.freeze
+      end
     end
 
     def thousands_separator
@@ -220,30 +256,60 @@ class Money
 
     attr_reader :money, :currency, :rules
 
-    def format_number
+    def build_parts
+      parts =
+        if show_free_text?
+          [Part.new(type: :free_text, text: free_text, html: false)]
+        else
+          number_parts = format_number_parts
+          signed_parts = append_sign_parts(number_parts)
+          append_currency_symbol_parts(signed_parts)
+        end
+
+      parts.reject { |part| part.text.empty? }
+    end
+
+    def format_number_parts
       whole_part, decimal_part = extract_whole_and_decimal_parts
 
       # Format whole and decimal parts separately
       decimal_part = format_decimal_part(decimal_part)
-      whole_part = format_whole_part(whole_part)
+      whole_parts = format_whole_parts(whole_part)
 
       # Assemble the final formatted amount
-      if rules[:html_wrap]
+      number_parts =
         if decimal_part.nil?
-          html_wrap(whole_part, "whole")
+          whole_parts
         else
-          [
-            html_wrap(whole_part, "whole"),
-            html_wrap(decimal_mark, "decimal-mark"),
-            html_wrap(decimal_part, "decimal"),
-          ].join
+          whole_parts + [
+            Part.new(type: :decimal_mark, text: decimal_mark, html: false),
+            Part.new(type: :decimal, text: decimal_part, html: false),
+          ]
         end
+
+      if rules[:html_wrap]
+        wrap_number_parts(number_parts)
       else
-        [whole_part, decimal_part].compact.join(decimal_mark)
+        number_parts
       end
     end
 
-    def append_sign(formatted_number)
+    # Wraps the number parts in the same spans the non-part-aware formatter
+    # produced: one "whole" span when there is no decimal part, otherwise
+    # separate "whole", "decimal-mark" and "decimal" spans.
+    def wrap_number_parts(number_parts)
+      decimal_mark_index = number_parts.index { |part| part.type == :decimal_mark }
+
+      unless decimal_mark_index
+        return html_wrap_parts(number_parts, "whole")
+      end
+
+      html_wrap_parts(number_parts[0...decimal_mark_index], "whole") +
+        html_wrap_parts([number_parts[decimal_mark_index]], "decimal-mark") +
+        html_wrap_parts(number_parts[(decimal_mark_index + 1)..], "decimal")
+    end
+
+    def append_sign_parts(number_parts)
       sign = money.negative? ? "-" : ""
 
       if rules[:sign_positive] == true && money.positive?
@@ -258,30 +324,79 @@ class Money
       symbol_value = symbol_value_from(rules)
 
       if symbol_value && !symbol_value.empty?
-        if rules[:html_wrap]
-          symbol_value = html_wrap(symbol_value, "currency-symbol")
-        end
+        unit_parts = build_unit_parts(symbol_value, sign_before)
 
-        rules[:format]
-          .gsub("%u", [sign_before, symbol_value].join)
-          .gsub("%n", [sign, formatted_number].join)
+        replacement_parts = []
+        replacement_parts << Part.new(type: :sign, text: sign, html: false) unless sign.empty?
+        replacement_parts += number_parts
+
+        expand_format_template(rules[:format], unit_parts, replacement_parts)
       else
-        "#{sign_before}#{sign}#{formatted_number}"
+        parts = []
+        parts << Part.new(type: :sign, text: sign_before, html: false) if sign_before
+        parts << Part.new(type: :sign, text: sign, html: false) unless sign.empty?
+        parts + number_parts
       end
     end
 
-    def append_currency_symbol(formatted_number)
+    def build_unit_parts(symbol_value, sign_before)
+      symbol_part = Part.new(
+        type: :symbol,
+        text: symbol_value,
+        html: html_entity_symbol?(symbol_value),
+      )
+
+      symbol_parts =
+        if rules[:html_wrap]
+          html_wrap_parts([symbol_part], "currency-symbol")
+        else
+          [symbol_part]
+        end
+
+      parts = []
+      parts << Part.new(type: :sign, text: sign_before, html: false) if sign_before
+      parts + symbol_parts
+    end
+
+    # Expands the +:format+ template exactly like the string-based formatter
+    # did: every "%u" is replaced by the unit (symbol) parts and every "%n"
+    # by the number parts, leaving the surrounding template text as
+    # +:literal+ parts.
+    def expand_format_template(template, unit_parts, number_parts)
+      segments = [[:literal, template]]
+
+      { "%u" => unit_parts, "%n" => number_parts }.each do |token, replacement|
+        segments = segments.flat_map do |kind, value|
+          next [[kind, value]] if kind == :parts
+
+          value.split(token, -1).each_with_index.flat_map do |piece, index|
+            expanded = []
+            # Duplicate the replacement parts so repeated tokens (e.g. a
+            # symbol used twice) become separate, independently ranged parts.
+            expanded << [:parts, replacement.map(&:dup)] if index > 0
+            expanded << [:literal, piece] unless piece.empty?
+            expanded
+          end
+        end
+      end
+
+      segments.flat_map do |kind, value|
+        kind == :parts ? value : [Part.new(type: :literal, text: value, html: false)]
+      end
+    end
+
+    def append_currency_symbol_parts(parts)
       if rules[:with_currency]
-        currency_part =
+        currency_parts =
           if rules[:html_wrap]
-            html_wrap(currency.to_s, "currency")
+            html_wrap_parts([Part.new(type: :currency, text: currency.to_s, html: false)], "currency")
           else
-            currency.to_s
+            [Part.new(type: :currency, text: currency.to_s, html: false)]
           end
 
-        "#{formatted_number} #{currency_part}"
+        parts + [Part.new(type: :literal, text: " ", html: false)] + currency_parts
       else
-        formatted_number
+        parts
       end
     end
 
@@ -289,19 +404,38 @@ class Money
       money.zero? && rules[:display_free]
     end
 
-    def html_wrap(string, class_name)
-      "<span class=\"money-#{class_name}\">#{string}</span>"
+    def html_wrap_parts(parts, class_name)
+      [
+        Part.new(type: :html_tag, text: "<span class=\"money-#{class_name}\">", html: true),
+        *parts,
+        Part.new(type: :html_tag, text: "</span>", html: true),
+      ]
     end
 
     def free_text
       rules[:display_free].respond_to?(:to_str) ? rules[:display_free] : "free"
     end
 
-    def format_whole_part(value)
+    def format_whole_parts(value)
+      separator = thousands_separator
+      parts = []
+      offset = 0
+
       # Apply thousands_separator
-      value.gsub(rules[:delimiter_pattern]) do |digit_to_delimit|
-        "#{digit_to_delimit}#{thousands_separator}"
+      value.gsub(rules[:delimiter_pattern]) do
+        match = Regexp.last_match
+        parts << Part.new(type: :whole, text: value[offset...match.end(0)], html: false)
+        parts << Part.new(type: :thousands_separator, text: separator, html: false) unless separator.empty?
+        offset = match.end(0)
       end
+
+      parts << Part.new(type: :whole, text: value[offset..], html: false) if offset < value.length
+      parts
+    end
+
+    def html_entity_symbol?(symbol_value)
+      rules[:html_wrap] && !rules.has_key?(:symbol) &&
+        currency.html_entity != "" && symbol_value == currency.html_entity
     end
 
     def extract_whole_and_decimal_parts

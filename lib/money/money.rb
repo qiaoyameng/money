@@ -609,6 +609,20 @@ class Money
     Money::Formatter.new(self, *rules).to_s
   end
 
+  # Creates a formatted price string decomposed into typed segments,
+  # according to the same rules as {#format}.
+  #
+  # Concatenating the +text+ of all returned parts in order always equals
+  # the result of {#format} with the same rules.
+  #
+  # @param [Hash] rules See {Money::Formatter Money::Formatter} for the list of formatting options
+  #
+  # @return [Array<Money::Formatter::Part>]
+  #
+  def format_parts(*rules)
+    Money::Formatter.new(self, *rules).parts
+  end
+
   # Returns a thousands separator according to the locale
   #
   # @return [String]
