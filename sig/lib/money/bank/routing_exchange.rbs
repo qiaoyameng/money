@@ -1,0 +1,63 @@
+class Money
+  module Bank
+    class RoutingExchange < VariableExchange
+      class Route
+        attr_reader currencies: ::Array[String]
+        attr_reader rates: ::Array[Numeric]
+
+        def initialize: (::Array[String] currencies, ::Array[Numeric] rates) -> void
+
+        def legs: () -> ::Array[[String, String, Numeric]]
+
+        def hops: () -> Integer
+      end
+
+      class ExchangeResult
+        attr_reader money: Money
+        attr_reader route: Route
+
+        def initialize: (Money money, Route route) -> void
+
+        def rates: () -> ::Array[Numeric]
+      end
+
+      def exchange_with: (
+        Money from,
+        (Money::Currency | string | Symbol) to_currency,
+        ?via: (::Array[Money::Currency | string | Symbol] | nil),
+        ?max_hops: (Integer | nil)
+      ) ?{ (untyped) -> untyped } -> Money
+
+      def exchange_with_route: (
+        Money from,
+        (Money::Currency | string | Symbol) to_currency,
+        ?via: (::Array[Money::Currency | string | Symbol] | nil),
+        ?max_hops: (Integer | nil)
+      ) ?{ (untyped) -> untyped } -> ExchangeResult
+
+      private
+
+      def rates_view: () -> ::Hash[[String, String], Numeric]
+
+      def shortest_path: (
+        String origin,
+        String target,
+        ::Hash[[String, String], Numeric] view,
+        (::Set[String] | nil) allowed,
+        (Integer | nil) max_hops
+      ) -> (::Array[String] | nil)
+
+      def build_graph: (
+        ::Hash[[String, String], Numeric] view,
+        (::Set[String] | nil) allowed,
+        String target
+      ) -> ::Hash[String, ::Array[String]]
+
+      def convert_along: (Money from, Money::Currency to_currency, ::Array[Numeric] rates) ?{ (untyped) -> untyped } -> Money
+
+      def normalize_via: ((::Array[Money::Currency | string | Symbol] | nil) via) -> (::Set[String] | nil)
+
+      def validate_max_hops: ((Integer | nil) max_hops) -> (Integer | nil)
+    end
+  end
+end
