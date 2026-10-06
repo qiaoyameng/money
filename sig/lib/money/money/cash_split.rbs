@@ -1,0 +1,27 @@
+class Money
+  # Splits a Money amount into physical cash (banknotes and coins) with
+  # limited availability of each denomination.
+  class CashSplit
+    # Finds a combination of the given denominations that adds up exactly to
+    # the amount of +money+, using as few notes/coins as possible. When
+    # several combinations use the same minimal number of notes/coins, the
+    # one favouring larger denominations is returned.
+    #
+    # @param money [Money] the amount to split. Its fractional value must be
+    #   a whole number of smallest units; amounts carried with infinite
+    #   precision are rejected instead of being rounded implicitly.
+    # @param stock [Hash{Money => Integer}] available denominations mapped to
+    #   the number of notes/coins on hand. Every denomination must be a
+    #   Money in the same currency as +money+ and a positive whole number of
+    #   smallest units, and every count must be a non-negative Integer. The
+    #   Hash is never mutated and no stock is consumed.
+    #
+    # @return [Hash{Money => Integer}, nil] notes/coins to use per
+    #   denomination (only denominations that are used, in descending
+    #   denomination order), or +nil+ when the amount cannot be composed
+    #   exactly. A zero amount returns an empty Hash.
+    #
+    # @raise [ArgumentError] when the amount or the stock is invalid.
+    def self.generate: (Money money, Hash[Money, Integer] stock) -> Hash[Money, Integer]?
+  end
+end

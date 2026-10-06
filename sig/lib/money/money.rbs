@@ -475,6 +475,24 @@ class Money
 
   alias split allocate
 
+  # Splits the amount into physical cash (banknotes and coins), given the
+  # available denominations and how many of each are on hand.
+  #
+  # Finds a combination that adds up exactly to the amount using as few
+  # notes/coins as possible, favouring larger denominations on ties. The
+  # denominations do not need to be "greedy-friendly" (e.g. 1, 3, 4). The
+  # passed stock is never modified.
+  #
+  # @param [Hash{Money => Integer}] stock available denominations (Money in
+  #   the same currency, a positive whole number of smallest units) mapped
+  #   to non-negative Integer counts
+  #
+  # @return [Hash{Money => Integer}, nil] notes/coins to use per
+  #   denomination, or +nil+ when the amount cannot be composed exactly
+  #
+  # @see Money::CashSplit
+  def cash_split: (Hash[Money, Integer] stock) -> Hash[Money, Integer]?
+
   # Round the monetary amount to smallest unit of coinage.
   #
   # @note

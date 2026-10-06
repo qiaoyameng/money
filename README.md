@@ -503,6 +503,32 @@ To round to the nearest cash value in currencies without small denominations:
 Money.from_cents(11_11, "CHF").to_nearest_cash_value.format # => "CHF 11.10"
 ```
 
+## Cash Splitting
+
+Use `Money#cash_split` to break an amount into physical cash, given the
+available denominations and how many of each are on hand. It finds an exact
+combination using as few notes/coins as possible, favouring larger
+denominations on ties — even when the denominations are not greedy-friendly
+(e.g. 1, 3, 4):
+
+```ruby
+stock = {
+  Money.from_cents(1_00, "USD") => 2,  # two $1 bills
+  Money.from_cents(5_00, "USD") => 1,  # one $5 bill
+}
+
+Money.from_cents(6_00, "USD").cash_split(stock)
+#=> { Money.from_cents(5_00, "USD") => 1, Money.from_cents(1_00, "USD") => 1 }
+
+Money.from_cents(8_00, "USD").cash_split(stock) #=> nil (cannot be composed exactly)
+```
+
+Denominations must be `Money` objects in the same currency with a positive
+whole number of smallest units, and stock counts must be non-negative
+integers; invalid input raises `ArgumentError`. A zero amount returns an
+empty Hash, and amounts with infinite precision are rejected instead of
+being rounded. The passed stock is never modified.
+
 ## Ruby on Rails
 
 To integrate money in a Rails application use [money-rails](https://github.com/RubyMoney/money-rails).
