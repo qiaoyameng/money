@@ -498,6 +498,16 @@ class Money
   #
   def format: (*Hash[untyped, untyped] rules) -> string
 
+  # Returns the formatted price broken down into typed parts, in output
+  # order. Concatenating the +value+ of every part equals #format with the
+  # same rules.
+  #
+  # @param [Hash] rules See {Money::Formatter Money::Formatter} for the list of formatting options
+  #
+  # @return [Array<Hash>]
+  #
+  def format_parts: (*Hash[untyped, untyped] rules) -> Array[{ type: Symbol, value: String, start: Integer, end: Integer }]
+
   # Returns a thousands separator according to the locale
   #
   # @return [String]

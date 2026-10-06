@@ -179,6 +179,11 @@ class Money
 
     alias separator decimal_mark
 
+    # Returns the formatted price broken down into typed parts, in output
+    # order. Concatenating the +value+ of every part is guaranteed to be
+    # identical to the string returned by #to_s for the same rules.
+    def parts: () -> Array[{ type: Symbol, value: String, start: Integer, end: Integer }]
+
     private
 
     attr_reader money: Money
@@ -187,19 +192,25 @@ class Money
 
     attr_reader rules: FormattingRules
 
-    def format_number: () -> string
+    def build_parts: () -> Array[[ Symbol, String ]]
 
-    def append_sign: (untyped formatted_number) -> string
+    def number_parts: () -> Array[[ Symbol, String ]]
 
-    def append_currency_symbol: (untyped formatted_number) -> string
+    def insert_sign_parts: (Array[[ Symbol, String ]] number_parts) -> Array[[ Symbol, String ]]
+
+    def expand_format_template: (Array[[ Symbol, String ]] unit_parts, Array[[ Symbol, String ]] number_parts) -> Array[[ Symbol, String ]]
+
+    def currency_parts: () -> Array[[ Symbol, String ]]
+
+    def symbol_part_type: () -> Symbol
 
     def show_free_text?: () -> untyped
 
-    def html_wrap: (string string, string class_name) -> ::String
+    def html_wrap_parts: (Array[[ Symbol, String ]] parts, string class_name) -> Array[[ Symbol, String ]]
 
     def free_text: () -> (untyped | "free")
 
-    def format_whole_part: (untyped value) -> untyped
+    def format_whole_part: (string value) -> Array[[ Symbol, String ]]
 
     def extract_whole_and_decimal_parts: () -> Array[string]
 

@@ -194,11 +194,47 @@ class Money
     end
 
     def to_s
-      return free_text if show_free_text?
+      parts.map { |part| part[:value] }.join
+    end
 
-      result = format_number
-      formatted = append_sign(result)
-      append_currency_symbol(formatted)
+    # Returns the formatted price broken down into typed parts, in output
+    # order. Concatenating the +value+ of every part is guaranteed to be
+    # identical to the string returned by #to_s for the same rules.
+    #
+    # Each part is a Hash with the following keys:
+    #
+    # - +:type+  - a Symbol describing the role of the part, one of:
+    #   +:free_text+, +:sign+, +:symbol+, +:html_entity+, +:whole+,
+    #   +:thousands_separator+, +:decimal_mark+, +:decimal+, +:currency+,
+    #   +:whitespace+, +:literal+ or +:html_tag+.
+    # - +:value+ - the exact substring of the formatted output.
+    # - +:start+ - the offset (in Unicode characters, not bytes) of the part
+    #   within the formatted output.
+    # - +:end+   - the offset (in Unicode characters) just past the part.
+    #
+    # @return [Array<Hash>]
+    #
+    # @example
+    #   Money.us_dollar(123456).format_parts
+    #   #=> [
+    #     { type: :symbol, value: "$", start: 0, end: 1 },
+    #     { type: :whole, value: "1", start: 1, end: 2 },
+    #     { type: :thousands_separator, value: ",", start: 2, end: 3 },
+    #     { type: :whole, value: "234", start: 3, end: 6 },
+    #     { type: :decimal_mark, value: ".", start: 6, end: 7 },
+    #     { type: :decimal, value: "56", start: 7, end: 9 }
+    #   ]
+    def parts
+      @parts ||= begin
+        offset = 0
+
+        build_parts.each_with_object([]) do |(type, value), result|
+          next if value.empty?
+
+          result << { type: type, value: value, start: offset, end: offset + value.length }
+          offset += value.length
+        end
+      end
     end
 
     def thousands_separator
@@ -220,35 +256,43 @@ class Money
 
     attr_reader :money, :currency, :rules
 
-    def format_number
+    def build_parts
+      return [[:free_text, free_text]] if show_free_text?
+
+      insert_sign_parts(number_parts) + currency_parts
+    end
+
+    def number_parts
       whole_part, decimal_part = extract_whole_and_decimal_parts
 
       # Format whole and decimal parts separately
       decimal_part = format_decimal_part(decimal_part)
-      whole_part = format_whole_part(whole_part)
+      whole_parts = format_whole_part(whole_part)
 
       # Assemble the final formatted amount
       if rules[:html_wrap]
         if decimal_part.nil?
-          html_wrap(whole_part, "whole")
+          html_wrap_parts(whole_parts, "whole")
         else
-          [
-            html_wrap(whole_part, "whole"),
-            html_wrap(decimal_mark, "decimal-mark"),
-            html_wrap(decimal_part, "decimal"),
-          ].join
+          html_wrap_parts(whole_parts, "whole") +
+            html_wrap_parts([[:decimal_mark, decimal_mark]], "decimal-mark") +
+            html_wrap_parts([[:decimal, decimal_part]], "decimal")
         end
+      elsif decimal_part.nil?
+        whole_parts
       else
-        [whole_part, decimal_part].compact.join(decimal_mark)
+        whole_parts + [[:decimal_mark, decimal_mark], [:decimal, decimal_part]]
       end
     end
 
-    def append_sign(formatted_number)
+    def insert_sign_parts(number_parts)
       sign = money.negative? ? "-" : ""
 
       if rules[:sign_positive] == true && money.positive?
         sign = "+"
       end
+
+      sign_before = ""
 
       if rules[:sign_before_symbol] == true
         sign_before = sign
@@ -258,30 +302,55 @@ class Money
       symbol_value = symbol_value_from(rules)
 
       if symbol_value && !symbol_value.empty?
+        symbol_parts = [[symbol_part_type, symbol_value]]
+
         if rules[:html_wrap]
-          symbol_value = html_wrap(symbol_value, "currency-symbol")
+          symbol_parts = html_wrap_parts(symbol_parts, "currency-symbol")
         end
 
-        rules[:format]
-          .gsub("%u", [sign_before, symbol_value].join)
-          .gsub("%n", [sign, formatted_number].join)
+        expand_format_template(
+          [[:sign, sign_before]] + symbol_parts,
+          [[:sign, sign]] + number_parts,
+        )
       else
-        "#{sign_before}#{sign}#{formatted_number}"
+        [[:sign, sign_before], [:sign, sign]] + number_parts
       end
     end
 
-    def append_currency_symbol(formatted_number)
-      if rules[:with_currency]
-        currency_part =
-          if rules[:html_wrap]
-            html_wrap(currency.to_s, "currency")
-          else
-            currency.to_s
-          end
+    # Substitutes the %u (unit) and %n (number) placeholders of the format
+    # template with the given parts, keeping any literal template text as
+    # :literal parts. Placeholders may appear more than once.
+    def expand_format_template(unit_parts, number_parts)
+      template = rules[:format]
+      parts = []
+      position = 0
 
-        "#{formatted_number} #{currency_part}"
+      template.scan(/%[un]/) do |token|
+        match = Regexp.last_match
+        parts << [:literal, template[position...match.begin(0)]] if match.begin(0) > position
+        parts.concat(token == "%u" ? unit_parts : number_parts)
+        position = match.end(0)
+      end
+
+      parts << [:literal, template[position..]] if position < template.length
+      parts
+    end
+
+    def currency_parts
+      return [] unless rules[:with_currency]
+
+      parts = [[:currency, currency.to_s]]
+      parts = html_wrap_parts(parts, "currency") if rules[:html_wrap]
+
+      [[:whitespace, " "]] + parts
+    end
+
+    def symbol_part_type
+      if !rules.has_key?(:symbol) && rules[:html_wrap] &&
+         currency.html_entity != "" && currency.html_entity != currency.symbol
+        :html_entity
       else
-        formatted_number
+        :symbol
       end
     end
 
@@ -289,8 +358,8 @@ class Money
       money.zero? && rules[:display_free]
     end
 
-    def html_wrap(string, class_name)
-      "<span class=\"money-#{class_name}\">#{string}</span>"
+    def html_wrap_parts(parts, class_name)
+      [[:html_tag, "<span class=\"money-#{class_name}\">"]] + parts + [[:html_tag, "</span>"]]
     end
 
     def free_text
@@ -298,10 +367,19 @@ class Money
     end
 
     def format_whole_part(value)
+      parts = []
+      position = 0
+
       # Apply thousands_separator
-      value.gsub(rules[:delimiter_pattern]) do |digit_to_delimit|
-        "#{digit_to_delimit}#{thousands_separator}"
+      value.gsub(rules[:delimiter_pattern]) do
+        match = Regexp.last_match
+        parts << [:whole, value[position...match.end(0)]] if match.end(0) > position
+        parts << [:thousands_separator, thousands_separator.to_s]
+        position = match.end(0)
       end
+
+      parts << [:whole, value[position..]] if position < value.length
+      parts
     end
 
     def extract_whole_and_decimal_parts
