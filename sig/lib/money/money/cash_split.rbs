@@ -1,0 +1,17 @@
+class Money
+  class CashSplit
+    # Splits an amount into cash denominations with limited stock, using as few
+    # notes/coins as possible. When several splits use the same number of
+    # notes/coins, the one using larger denominations is preferred.
+    #
+    # @param amount [Integer] The amount to split, in the currency's smallest unit.
+    # @param stock_by_denomination [Hash{Integer => Integer}] Maps each
+    #   denomination (in the currency's smallest unit) to the number of
+    #   notes/coins available.
+    #
+    # @return [Hash{Integer => Integer}] Maps each used denomination to the
+    #   number of notes/coins needed. Empty when amount is zero.
+    # @return [nil] When the amount cannot be composed exactly.
+    def self.generate: (Integer amount, Hash[Integer, Integer] stock_by_denomination) -> Hash[Integer, Integer]?
+  end
+end

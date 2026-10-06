@@ -980,6 +980,63 @@ RSpec.describe Money do
     end
   end
 
+  describe "#cash_split" do
+    let(:one) { Money.new(100, "USD") }
+    let(:three) { Money.new(300, "USD") }
+    let(:four) { Money.new(400, "USD") }
+
+    it "returns the split keyed by the given Money denominations" do
+      result = Money.new(600, "USD").cash_split(one => 6, three => 2, four => 2)
+      expect(result).to eq(three => 2)
+    end
+
+    it "returns an empty hash for a zero amount" do
+      expect(Money.new(0, "USD").cash_split(one => 1)).to eq({})
+    end
+
+    it "returns nil when the amount cannot be composed exactly" do
+      expect(Money.new(200, "USD").cash_split(three => 1, four => 1)).to be_nil
+      expect(Money.new(800, "USD").cash_split(three => 1, four => 1)).to be_nil
+    end
+
+    it "validates that denominations are Money of the same currency" do
+      expect { Money.new(100, "USD").cash_split(Money.new(100, "EUR") => 1) }
+        .to raise_error(ArgumentError)
+      expect { Money.new(100, "USD").cash_split(100 => 1) }
+        .to raise_error(ArgumentError)
+      expect { Money.new(100, "USD").cash_split(nil) }
+        .to raise_error(ArgumentError)
+    end
+
+    it "validates that denominations are positive whole amounts" do
+      expect { Money.new(100, "USD").cash_split(Money.new(0, "USD") => 1) }
+        .to raise_error(ArgumentError)
+      expect { Money.new(100, "USD").cash_split(Money.new(-100, "USD") => 1) }
+        .to raise_error(ArgumentError)
+    end
+
+    it "validates that stock is a non-negative Integer" do
+      expect { Money.new(100, "USD").cash_split(one => -1) }.to raise_error(ArgumentError)
+      expect { Money.new(100, "USD").cash_split(one => 1.5) }.to raise_error(ArgumentError)
+    end
+
+    it "rejects amounts with subunit fractions", :default_infinite_precision_true do
+      money = Money.new(BigDecimal("10.5"), "USD")
+      expect { money.cash_split(Money.new(10, "USD") => 2) }.to raise_error(ArgumentError)
+    end
+
+    it "rejects infinite precision denominations", :default_infinite_precision_true do
+      denomination = Money.new(BigDecimal("10.5"), "USD")
+      expect { Money.new(21, "USD").cash_split(denomination => 2) }.to raise_error(ArgumentError)
+    end
+
+    it "does not mutate the given stock" do
+      stock = { one => 6, three => 2, four => 2 }
+      Money.new(600, "USD").cash_split(stock)
+      expect(stock).to eq(one => 6, three => 2, four => 2)
+    end
+  end
+
   describe "#round" do
     subject(:rounded) { money.round }
 

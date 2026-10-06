@@ -475,6 +475,21 @@ class Money
 
   alias split allocate
 
+  # Splits the amount into cash denominations with limited stock, using as few
+  # notes/coins as possible. When several splits use the same number of
+  # notes/coins, the one using larger denominations is preferred.
+  #
+  # @param [Hash{Money => Integer}] denominations maps each available
+  #   denomination (a +Money+ of the same currency, with a positive amount)
+  #   to the number of notes/coins in stock (a non-negative Integer)
+  #
+  # @return [Hash{Money => Integer}] maps each used denomination to the
+  #   number of notes/coins needed. Empty when the amount is zero.
+  # @return [nil] when the amount cannot be composed exactly with the given
+  #   stock
+  #
+  def cash_split: (Hash[Money, Integer] denominations) -> Hash[Money, Integer]?
+
   # Round the monetary amount to smallest unit of coinage.
   #
   # @note
