@@ -426,6 +426,42 @@ currencies don't match:
 Money.disallow_currency_conversion!
 ```
 
+### Routing through intermediate currencies
+
+`Money::Bank::RoutingExchange` extends `VariableExchange` and can convert
+through intermediate currencies when no direct quote exists. Direct quotes are
+always preferred; otherwise the directed path with the fewest quotes is used,
+with equal-length paths ordered by their full currency code sequence. Rates are
+never inverted, and routing never optimizes for the best or worst rate.
+
+Pass `via` with the currency codes that are allowed as intermediate nodes, and
+optionally `max_hops` to cap the number of quotes used. A single exchange reads
+all of its quotes from one immutable snapshot of the rates, so updates arriving
+mid-exchange are never mixed in. Precision is preserved along the route and the
+rounding rule is applied exactly once, at the target currency.
+
+```ruby
+bank = Money::Bank::RoutingExchange.new
+bank.add_rate("USD", "EUR", 0.9)
+bank.add_rate("EUR", "JPY", 150)
+
+# No direct USD -> JPY quote: route through EUR.
+bank.exchange_with(Money.new(100_00, "USD"), "JPY", via: "EUR")
+#=> #<Money fractional:13500 currency:JPY>
+
+# Restrict the number of quotes used.
+bank.exchange_with(Money.new(100_00, "USD"), "JPY", via: "EUR", max_hops: 2)
+
+# Inspect the selected path and the quotes used.
+route = bank.find_route("USD", "JPY", via: "EUR")
+route.path  #=> ["USD", "EUR", "JPY"]
+route.rates #=> [0.9, 150]
+
+money, route = bank.exchange_with_route(Money.new(100_00, "USD"), "JPY", via: "EUR")
+```
+
+Without `via` the bank behaves exactly like `VariableExchange`.
+
 ### Implementations
 
 The following is a list of Money.gem compatible currency exchange rate

@@ -1,0 +1,51 @@
+class Money
+  module Bank
+    class RoutingExchange < VariableExchange
+      class Route
+        attr_reader path: ::Array[String]
+
+        attr_reader rates: ::Array[untyped]
+
+        def initialize: (::Array[String] path, ::Array[untyped] rates) -> void
+
+        def via: () -> ::Array[String]
+
+        def hops: () -> Integer
+
+        def from: () -> String
+
+        def to: () -> String
+
+        def quotes: () -> ::Array[[String, String, untyped]]
+
+        def inspect: () -> String
+
+        def ==: (untyped other) -> bool
+
+        def hash: () -> Integer
+      end
+
+      def exchange_with: (Money from, (Money::Currency | string | Symbol) to_currency, ?via: (untyped | nil), ?max_hops: (Integer | nil)) ?{ (untyped) -> untyped } -> Money
+
+      def exchange_with_route: (Money from, (Money::Currency | string | Symbol) to_currency, ?via: (untyped | nil), ?max_hops: (Integer | nil)) ?{ (untyped) -> untyped } -> [Money, Route]
+
+      def find_route: ((Money::Currency | string | Symbol) from, (Money::Currency | string | Symbol) to_currency, ?via: (untyped | nil), ?max_hops: (Integer | nil)) -> Route?
+
+      private
+
+      def rate_snapshot: () -> ::Hash[[String, String], untyped]
+
+      def shortest_route: (String from_code, String to_code, untyped allowed, (Integer | nil) hop_limit, ::Hash[[String, String], untyped] edges) -> Route?
+
+      def outgoing: (String code, ::Hash[[String, String], untyped] edges) -> ::Array[[String, untyped]]
+
+      def calculate_routed_fractional: (untyped from, untyped to_currency, Route route) -> untyped
+
+      def round_routed: (untyped amount) ?{ (untyped) -> untyped } -> untyped
+
+      def normalize_intermediaries: (untyped via) -> untyped
+
+      def normalize_max_hops: (untyped max_hops) -> (Integer | nil)
+    end
+  end
+end
