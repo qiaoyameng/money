@@ -443,6 +443,44 @@ implementations.
 - [money-uphold-bank](https://github.com/subvisual/money-uphold-bank)
 - [money-unirate-api](https://github.com/UniRate-API/money-unirate-api)
 
+## Tax calculation
+
+`Money::TaxCalculator` splits a tax-inclusive amount into a net amount and one
+or more named taxes, and performs the inverse gross-up. Rates must be
+`Rational` (or `BigDecimal`/`Integer`), never `Float`; the calculation itself
+is exact (`Rational`) up to the final rounding. A tax can include other named
+taxes in its base ("tax on tax").
+
+```ruby
+rules = [
+  { name: :gst, rate: Rational(10, 100) },
+  { name: :wht, rate: Rational(2, 100), includes: [:gst] },
+]
+calculator = Money::TaxCalculator.new(rules)
+
+# Gross-down: tax-inclusive amount => net + taxes
+breakdown = calculator.gross_down(Money.new(11_300, "USD"))
+breakdown.net.money         # => #<Money fractional:10071 currency:USD>
+breakdown.taxes[:gst].money # => #<Money fractional:1007 currency:USD>
+breakdown.taxes[:wht].money # => #<Money fractional:222 currency:USD>
+breakdown.total             # => #<Money fractional:11300 currency:USD>
+
+# Unrounded values and the assigned leftover are available too:
+breakdown.net.exact_subunits      # => (5650000/561)
+breakdown.net.adjustment_subunits # => 0
+
+# Gross-up: net => tax-inclusive total
+gross = calculator.gross_up(Money.new(10_000, "USD"))
+gross.total # => #<Money fractional:11220 currency:USD>
+```
+
+The rounded lines always sum exactly to the original amount. Leftover
+subunits follow the largest-remainder rule; ties go to the net line first and
+then to taxes in declaration order. Negative amounts (refunds) follow the
+identical rule with the sign flipped. Cycles, unknown dependencies, duplicate
+names and negative or `Float` rates raise
+`Money::TaxCalculator::InvalidTaxRuleError`.
+
 ## Formatting
 
 There are several formatting rules for when `Money#format` is called. For more information, check out the [formatting module source](https://github.com/RubyMoney/money/blob/main/lib/money/money/formatter.rb), or read the latest release's [rdoc version](https://www.rubydoc.info/gems/money/Money/Formatter).

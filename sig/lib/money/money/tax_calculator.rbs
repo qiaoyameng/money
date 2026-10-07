@@ -1,0 +1,46 @@
+class Money
+  class TaxCalculator
+    class InvalidTaxRuleError < ArgumentError
+    end
+
+    class Rule < Struct
+      attr_accessor name: Symbol
+      attr_accessor rate: Rational
+      attr_accessor includes: Array[Symbol]
+
+      def self.new: (?name: Symbol, ?rate: Rational, ?includes: Array[Symbol]) -> Rule
+    end
+
+    class Line < Struct
+      attr_accessor name: Symbol
+      attr_accessor money: Money
+      attr_accessor exact_subunits: Rational
+      attr_accessor adjustment_subunits: Integer
+    end
+
+    class Breakdown < Struct
+      attr_accessor currency: Money::Currency
+      attr_accessor net: Line
+      attr_accessor taxes: Hash[Symbol, Line]
+      attr_accessor tax_total: Money
+      attr_accessor total: Money
+      attr_accessor total_exact_subunits: Rational
+
+      def to_h: () -> Hash[Symbol, untyped]
+    end
+
+    # A single rule as Hash ({name:, rate:, includes:}), Array
+    # ([name, rate, includes]) or Rule.
+    type rule_input = Rule | Array[Symbol | Numeric | Array[Symbol]] | Hash[Symbol, Numeric | Array[Symbol] | Symbol]
+
+    @rules: Array[Rule]
+
+    def initialize: (rule_input | Array[rule_input]) -> void
+
+    def gross_up: (Money | Numeric net_amount, ?(Money::Currency | String | Symbol)? currency) -> Breakdown
+
+    def gross_down: (Money gross_amount) -> Breakdown
+
+    def names: () -> Array[Symbol]
+  end
+end

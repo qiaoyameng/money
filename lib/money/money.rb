@@ -5,6 +5,7 @@ require "money/bank/single_currency"
 require "money/money/arithmetic"
 require "money/money/constructors"
 require "money/money/formatter"
+require "money/money/tax_calculator"
 require "money/money/allocation"
 require "money/money/locale_backend"
 
