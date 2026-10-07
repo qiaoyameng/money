@@ -1,0 +1,50 @@
+# frozen_string_literal: true
+
+class Money
+  # Exchanges a batch of Money objects into one target currency, rounding the
+  # exact exchanged sum once and distributing the remainder across the entries.
+  def self.exchange_batch:
+    (Array[Money] moneys,
+     (Money::Currency | string | Symbol) to_currency,
+     ?untyped bank) -> BatchExchange::Result
+
+  # See file lib/money/money/batch_exchange.rb
+  class BatchExchange
+    class Item < Struct
+      attr_reader source: Money
+      attr_reader rate: BigDecimal
+      attr_reader exact_fractional: BigDecimal
+      attr_reader base_fractional: Integer
+      attr_reader remainder: BigDecimal
+      attr_reader adjustment: Integer
+      attr_accessor amount: Money?
+
+      def deviation_fractional: () -> BigDecimal
+    end
+
+    class Result < Struct
+      include Enumerable[Item]
+
+      attr_reader target_currency: Currency
+      attr_reader total: Money
+      attr_reader exact_total: BigDecimal
+      attr_reader items: Array[Item]
+
+      def amounts: () -> Array[Money]
+      def total_rounding_adjustment: () -> Integer
+      def each: () { (Item) -> void } -> Array[Item]
+    end
+
+    def self.generate:
+      (Array[Money] moneys,
+       (Money::Currency | string | Symbol) to_currency,
+       ?untyped bank) -> Result
+
+    def initialize:
+      (Array[Money] moneys,
+      (Money::Currency | string | Symbol) to_currency,
+      ?untyped bank) -> void
+
+    def call: () -> Result
+  end
+end
