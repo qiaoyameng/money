@@ -5,20 +5,16 @@ class Money
     #
     # The total of the allocated amounts will always equal the original amount.
     #
-    # The parts can be specified as:
-    #   Numeric — performs the split between a given number of parties evenly
-    #   Array<Numeric> — allocates the amounts proportionally to the given array
-    #
-    # @param amount [Numeric] The total amount to be allocated.
-    # @param parts [Numeric, Array<Numeric>] Number of parts to split into or an array (proportions for allocation).
-    # @param decimal_cutoff [bool | Integer] Controls per-split precision:
-    #   - When true, splits are truncated to whole amounts.
-    #   - When an Integer N, splits are rounded to N decimal places.
-    #   - When false or nil, no rounding/truncation is applied.
-    #   Defaults to true (whole amounts).
-    #
-    # @return [Array[Numeric]] An array containing the allocated amounts.
-    # @raise [ArgumentError] If parts is empty or not provided.
+    # @param amount [Numeric] Total amount to allocate.
+    # @param parts [Numeric | Array[Numeric]] Number of parts or proportional parts.
+    # @param decimal_cutoff [bool | Integer] Controls per-split precision.
+    # @return [Array[Numeric]] Allocated amounts.
     def self.generate: (Numeric amount, (Numeric | Array[Numeric]) parts, ?(bool | Integer) decimal_cutoff) -> Array[Numeric]
+
+    # @param amount [Integer] Total amount in the currency's smallest unit.
+    # @param rules [Array[Hash]] Per-recipient weight, minimum, and maximum.
+    # @return [Array[Integer]] Allocated amounts in smallest currency units.
+    # @raise [ArgumentError] If the request is impossible or uses invalid units.
+    def self.generate_with_constraints: (Integer amount, Array[Hash[Symbol, untyped]] rules) -> Array[Integer]
   end
 end

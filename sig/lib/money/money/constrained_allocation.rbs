@@ -1,0 +1,29 @@
+class Money
+  class ConstrainedAllocation
+    def self.generate: (Integer amount, Array[Hash[Symbol, untyped]] rules) -> Array[Integer]
+
+    def initialize: (Money money, untyped rules) -> void
+
+    def amount: () -> Integer
+
+    def prepared_rules: () -> Array[Hash[Symbol, untyped]]
+
+    private
+
+    def validate_rules_collection: () -> void
+
+    def validate_rule: (untyped rule, Integer index) -> void
+
+    def rule_value: (Hash[Symbol | String, untyped] rule, Array[Symbol] keys, untyped default) -> untyped
+
+    def prepared_weight: (untyped value, Integer index) -> Numeric
+
+    def prepared_bound: (untyped value, Symbol name, Integer index) -> Integer?
+
+    def whole_unit: (untyped value, String label) -> Integer
+
+    def require_whole_rational: (Rational value, String label) -> void
+
+    def require_whole_big_decimal: (BigDecimal value, String label) -> void
+  end
+end

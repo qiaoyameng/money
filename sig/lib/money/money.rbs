@@ -12,6 +12,8 @@ class Money
 
   include Money::Arithmetic
 
+  include Money::AllocationMethods
+
   extend Constructors
 
   # Raised when smallest denomination of a currency is not defined
@@ -452,28 +454,6 @@ class Money
   #   n = Money.new(100, "USD").as_euro
   #   n.currency #=> #<Money::Currency id: eur>
   def as_euro: () -> Money
-
-  # Splits a given amount in parts without losing pennies. The left-over pennies will be
-  # distributed round-robin amongst the parties. This means that parts listed first will likely
-  # receive more pennies than ones listed later.
-  #
-  # Pass [2, 1, 1] as input to give twice as much to part1 as part2 or
-  # part3 which results in 50% of the cash to party1, 25% to part2, and 25% to part3. Passing a
-  # number instead of an array will split the amount evenly (without losing pennies when rounding).
-  #
-  # @param [Array<Numeric>, Numeric] parts how amount should be distributed to parts
-  #
-  # @return [Array<Money>]
-  #
-  # @example
-  #   Money.new(5,   "USD").allocate([3, 7]) #=> [Money.new(2), Money.new(3)]
-  #   Money.new(100, "USD").allocate([1, 1, 1]) #=> [Money.new(34), Money.new(33), Money.new(33)]
-  #   Money.new(100, "USD").allocate(2) #=> [Money.new(50), Money.new(50)]
-  #   Money.new(100, "USD").allocate(3) #=> [Money.new(34), Money.new(33), Money.new(33)]
-  #
-  def allocate: ((Array[Numeric] | Numeric) parts) -> Array[Money]
-
-  alias split allocate
 
   # Round the monetary amount to smallest unit of coinage.
   #

@@ -1,0 +1,13 @@
+class Money
+  class ConstrainedAllocationRules
+    WEIGHT_KEYS: Array[Symbol]
+
+    MINIMUM_KEYS: Array[Symbol]
+
+    MAXIMUM_KEYS: Array[Symbol]
+
+    def self.parse: (untyped rules) -> Array[Hash[Symbol, untyped]]
+
+    def self.rule_value: (Hash[Symbol | String, untyped] rule, Array[Symbol] keys, untyped default) -> untyped
+  end
+end

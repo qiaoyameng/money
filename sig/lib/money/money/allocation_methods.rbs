@@ -1,0 +1,16 @@
+class Money
+  module AllocationMethods
+    # @param parts [Array[Numeric] | Numeric] How amount should be distributed.
+    # @return [Array[Money]]
+    def allocate: ((Array[Numeric] | Numeric) parts) -> Array[Money]
+
+    alias split allocate
+
+    # @param rules [Array[Hash]] Per-recipient weight, minimum, and maximum.
+    # @return [Array[Money]]
+    # @raise [ArgumentError] If constraints, currencies, or units are invalid.
+    def allocate_with_constraints: (Array[Hash[Symbol, untyped]] rules) -> Array[Money]
+
+    alias allocate_with_limits allocate_with_constraints
+  end
+end

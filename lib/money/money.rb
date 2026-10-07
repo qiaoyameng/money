@@ -6,6 +6,9 @@ require "money/money/arithmetic"
 require "money/money/constructors"
 require "money/money/formatter"
 require "money/money/allocation"
+require "money/money/allocation_methods"
+require "money/money/constrained_allocation_rules"
+require "money/money/constrained_allocation"
 require "money/money/locale_backend"
 
 # "Money is any object or record that is generally accepted as payment for
@@ -20,6 +23,7 @@ require "money/money/locale_backend"
 class Money
   include Comparable
   include Money::Arithmetic
+  include Money::AllocationMethods
   extend Constructors
 
   # Raised when smallest denomination of a currency is not defined
@@ -555,31 +559,6 @@ class Money
   def as_euro
     exchange_to("EUR")
   end
-
-  # Splits a given amount in parts without losing pennies. The left-over pennies will be
-  # distributed round-robin amongst the parties. This means that parts listed first will likely
-  # receive more pennies than ones listed later.
-  #
-  # Pass [2, 1, 1] as input to give twice as much to part1 as part2 or
-  # part3 which results in 50% of the cash to party1, 25% to part2, and 25% to part3. Passing a
-  # number instead of an array will split the amount evenly (without losing pennies when rounding).
-  #
-  # @param [Array<Numeric>, Numeric] parts how amount should be distributed to parts
-  #
-  # @return [Array<Money>]
-  #
-  # @example
-  #   Money.new(5,   "USD").allocate([3, 7]) #=> [Money.new(2), Money.new(3)]
-  #   Money.new(100, "USD").allocate([1, 1, 1]) #=> [Money.new(34), Money.new(33), Money.new(33)]
-  #   Money.new(100, "USD").allocate(2) #=> [Money.new(50), Money.new(50)]
-  #   Money.new(100, "USD").allocate(3) #=> [Money.new(34), Money.new(33), Money.new(33)]
-  #
-  def allocate(parts)
-    amounts = Money::Allocation.generate(fractional, parts, !Money.default_infinite_precision)
-    amounts.map { |amount| dup_with(fractional: amount) }
-  end
-
-  alias split allocate
 
   # Round the monetary amount to smallest unit of coinage.
   #

@@ -69,6 +69,10 @@ class Money
       result
     end
 
+    def self.generate_with_constraints(amount, rules)
+      ConstrainedAllocation.generate(amount, rules)
+    end
+
     # Converts a given number to BigDecimal.
     # This method supports inputs of BigDecimal, Rational, and other numeric types by ensuring they are all returned
     # as BigDecimal instances for consistent handling.

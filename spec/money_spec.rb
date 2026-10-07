@@ -942,6 +942,59 @@ RSpec.describe Money do
     end
   end
 
+  describe "#allocate_with_constraints" do
+    it "is also available as #allocate_with_limits" do
+      expect(Money.us_dollar(5)).to respond_to(:allocate_with_limits)
+    end
+
+    it "returns Money values in the original currency" do
+      rules = [
+        { weight: 1, minimum: 10, maximum: 40 },
+        { weight: 3, minimum: 20 },
+      ]
+
+      expected = [Money.new(28, "CAD"), Money.new(72, "CAD")]
+
+      expect(Money.ca_dollar(100).allocate_with_constraints(rules)).to eq(expected)
+    end
+
+    it "accepts Money minimums and maximums" do
+      rules = [
+        { weight: 1, minimum: Money.us_dollar(1), maximum: Money.us_dollar(3) },
+        { weight: 1, minimum: Money.us_dollar(1), maximum: Money.us_dollar(3) },
+        { weight: 1, minimum: Money.us_dollar(1) },
+      ]
+
+      result = Money.us_dollar(8).allocate_with_constraints(rules)
+
+      expect(result.map(&:fractional)).to eq([3, 3, 2])
+    end
+
+    it "rejects mixed currencies" do
+      expect do
+        Money.us_dollar(10).allocate_with_constraints([{ minimum: Money.new(1, "CAD") }])
+      end.to raise_error(ArgumentError, "minimum at index 0 has a different currency")
+
+      expect do
+        Money.us_dollar(10).allocate_with_constraints([{ maximum: Money.new(1, "CAD") }])
+      end.to raise_error(ArgumentError, "maximum at index 0 has a different currency")
+    end
+
+    it "keeps subclasses intact" do
+      special_money_class = Class.new(Money)
+      rules = [{ weight: 1, minimum: 1 }, { weight: 1 }]
+      result = special_money_class.new(5).allocate_with_constraints(rules)
+
+      expect(result).to all(be_a(special_money_class))
+    end
+
+    it "rejects fractional smallest units in infinite precision mode", :default_infinite_precision_true do
+      expect do
+        Money.new(BigDecimal("1.5"), "USD").allocate_with_constraints([{}])
+      end.to raise_error(ArgumentError, "amount must be a whole smallest unit")
+    end
+  end
+
   describe "#split" do
     it "needs at least one party" do
       expect { Money.us_dollar(1).split(0) }.to raise_error(ArgumentError)
