@@ -1,6 +1,152 @@
 # frozen_string_literal: true
 
 RSpec.describe Money::Allocation do
+  describe ".generate_with_constraints" do
+    it "reserves minimum amounts before distributing the remainder by weight" do
+      result = described_class.generate_with_constraints(
+        100,
+        [
+          { weight: 1, minimum: 10, maximum: 60 },
+          { weight: 3, minimum: 20 },
+        ],
+      )
+
+      expect(result).to eq([28, 72])
+    end
+
+    it "lets zero-weight shares receive only their minimum" do
+      result = described_class.generate_with_constraints(
+        10,
+        [
+          { weight: 0, minimum: 3 },
+          { weight: 1, minimum: 0 },
+          { weight: 1, minimum: 0 },
+        ],
+      )
+
+      expect(result).to eq([3, 4, 3])
+    end
+
+    it "distributes whole-unit remainders in the given order" do
+      result = described_class.generate_with_constraints(
+        7,
+        Array.new(3) { { weight: 1 } },
+      )
+
+      expect(result).to eq([3, 2, 2])
+    end
+
+    it "uses decimal float weights exactly when ordering the remainder" do
+      result = described_class.generate_with_constraints(
+        10,
+        Array.new(3) { { weight: 0.1 } },
+      )
+
+      expect(result).to eq([4, 3, 3])
+    end
+
+    it "removes capped shares and redistributes their unallocated capacity" do
+      result = described_class.generate_with_constraints(
+        100,
+        [
+          { weight: 1, minimum: 10, maximum: 30 },
+          { weight: 1, minimum: 10, maximum: 40 },
+          { weight: 1, minimum: 10 },
+        ],
+      )
+
+      expect(result).to eq([30, 35, 35])
+    end
+
+    it "supports shares without a maximum" do
+      result = described_class.generate_with_constraints(
+        1_000,
+        [
+          { weight: 1, maximum: 100 },
+          { weight: 1 },
+        ],
+      )
+
+      expect(result).to eq([100, 900])
+    end
+
+    it "supports tiny allocations that only cover a minimum" do
+      result = described_class.generate_with_constraints(
+        1,
+        [
+          { weight: 0, minimum: 1, maximum: 1 },
+          { weight: 1 },
+        ],
+      )
+
+      expect(result).to eq([1, 0])
+    end
+
+    it "handles large integer amounts without distributing one unit at a time" do
+      amount = 10**40
+      result = described_class.generate_with_constraints(
+        amount,
+        [
+          { weight: 1, maximum: 1 },
+          { weight: 1 },
+        ],
+      )
+
+      expect(result).to eq([1, amount - 1])
+    end
+
+    it "uses a default weight and minimum of zero" do
+      result = described_class.generate_with_constraints(5, [{}, {}])
+
+      expect(result).to eq([3, 2])
+    end
+
+    it "does not mutate the provided shares" do
+      shares = [{ weight: 1, minimum: 1, maximum: 5 }]
+      original = shares.first.dup
+
+      described_class.generate_with_constraints(3, shares)
+
+      expect(shares).to eq([original])
+    end
+
+    it "raises before returning results when the amount is below all minimums" do
+      expect do
+        described_class.generate_with_constraints(4, [{ minimum: 3 }, { minimum: 2 }])
+      end.to raise_error(ArgumentError, "amount is less than the total minimum allocation")
+    end
+
+    it "raises before returning results when positive-weight capacity is insufficient" do
+      expect do
+        described_class.generate_with_constraints(
+          6,
+          [
+            { weight: 0, minimum: 1, maximum: 10 },
+            { weight: 1, minimum: 1, maximum: 4 },
+          ],
+        )
+      end.to raise_error(ArgumentError, "amount is greater than the total maximum allocation")
+    end
+
+    it "raises for a negative weight" do
+      expect do
+        described_class.generate_with_constraints(10, [{ weight: -1 }])
+      end.to raise_error(ArgumentError, /weight for share at index 0/)
+    end
+
+    it "raises when a maximum is below its minimum" do
+      expect do
+        described_class.generate_with_constraints(10, [{ minimum: 6, maximum: 5 }])
+      end.to raise_error(ArgumentError, /maximum for share at index 0 is less than its minimum/)
+    end
+
+    it "raises for non-integer constrained amounts" do
+      expect do
+        described_class.generate_with_constraints(10, [{ minimum: BigDecimal("1.5") }])
+      end.to raise_error(ArgumentError, /integer in the smallest currency unit/)
+    end
+  end
+
   context "when given number as argument" do
     it "raises an error when invalid argument is given" do
       expect { described_class.generate(100, 0) }.to raise_error(ArgumentError)

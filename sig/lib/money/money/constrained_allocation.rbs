@@ -1,0 +1,12 @@
+class Money
+  module ConstrainedAllocation
+    # Allocates a whole amount with per-party minimums, optional maximums, and
+    # non-negative weights. Capped shares leave the remainder allocation.
+    #
+    # @return [Array[Money]]
+    def allocate_with_constraints: (Array[Hash[Symbol, untyped]] shares) -> Array[Money]
+
+    alias allocate_with_limits allocate_with_constraints
+    alias allocate_with_bounds allocate_with_constraints
+  end
+end

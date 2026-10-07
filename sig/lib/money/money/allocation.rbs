@@ -1,5 +1,13 @@
 class Money
   class Allocation
+    # Allocates a whole amount after reserving minimums, distributing the
+    # remainder by non-negative weights, and removing capped shares.
+    #
+    # @return [Array[Integer]]
+    def self.generate_with_constraints: (Integer amount, Array[Hash[Symbol, untyped]] shares) -> Array[Integer]
+    alias self.generate_with_bounds self.generate_with_constraints
+    alias self.generate_with_limits self.generate_with_constraints
+
     # Allocates a specified amount into parts based on their proportions or distributes
     # it evenly when the number of parts is specified numerically.
     #

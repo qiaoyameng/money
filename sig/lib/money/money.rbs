@@ -11,6 +11,7 @@ class Money
   include Comparable
 
   include Money::Arithmetic
+  include Money::ConstrainedAllocation
 
   extend Constructors
 

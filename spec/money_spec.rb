@@ -942,6 +942,92 @@ RSpec.describe Money do
     end
   end
 
+  describe "#allocate_with_constraints" do
+    it "returns Money amounts in the same currency and order" do
+      shares = [
+        { weight: 1, minimum: Money.us_dollar(10), maximum: Money.us_dollar(30) },
+        { weight: 1, minimum: Money.us_dollar(10) },
+        { weight: 0, minimum: Money.us_dollar(10) },
+      ]
+      result = Money.us_dollar(100).allocate_with_constraints(shares)
+
+      expect(result).to eq(
+        [
+          Money.us_dollar(30),
+          Money.us_dollar(60),
+          Money.us_dollar(10),
+        ],
+      )
+    end
+
+    it "accepts an omitted or nil maximum as unlimited" do
+      shares = [{ weight: 1, maximum: nil }, { weight: 1 }]
+      result = Money.us_dollar(10).allocate_with_constraints(shares)
+
+      expect(result.map(&:fractional)).to eq([5, 5])
+    end
+
+    it "keeps subclasses intact" do
+      special_money_class = Class.new(Money)
+      result = special_money_class.new(5).allocate_with_constraints([{ weight: 1 }])
+
+      expect(result.first).to be_a(special_money_class)
+    end
+
+    it "is available as allocate_with_limits" do
+      result = Money.us_dollar(4).allocate_with_limits([{ weight: 1 }, { weight: 1 }])
+
+      expect(result.map(&:fractional)).to eq([2, 2])
+    end
+
+    it "rejects bounds in another currency" do
+      expect do
+        Money.us_dollar(10).allocate_with_constraints(
+          [{ minimum: Money.ca_dollar(1) }],
+        )
+      end.to raise_error(ArgumentError, /uses CAD, but amount uses USD/)
+    end
+
+    it "rejects fractional bounds because allocation uses whole subunits" do
+      expect do
+        Money.us_dollar(10).allocate_with_constraints(
+          [{ minimum: BigDecimal("1.5") }],
+        )
+      end.to raise_error(ArgumentError, /non-negative whole USD amount/)
+    end
+
+    it "rejects negative weights" do
+      expect do
+        Money.us_dollar(10).allocate_with_constraints([{ weight: -1 }])
+      end.to raise_error(ArgumentError, /weight for share at index 0/)
+    end
+
+    it "rejects a total below the minimums" do
+      expect do
+        Money.us_dollar(3).allocate_with_constraints(
+          [{ minimum: Money.us_dollar(2) }, { minimum: Money.us_dollar(2) }],
+        )
+      end.to raise_error(ArgumentError, "amount is less than the total minimum allocation")
+    end
+
+    it "rejects a total above the positive-weight maximums" do
+      shares = [
+        { weight: 0, minimum: Money.us_dollar(1), maximum: Money.us_dollar(10) },
+        { weight: 1, maximum: Money.us_dollar(3) },
+      ]
+
+      expect { Money.us_dollar(5).allocate_with_constraints(shares) }
+        .to raise_error(ArgumentError, "amount is greater than the total maximum allocation")
+    end
+
+    it "rejects an allocation with no positive-weight share when minimums do not cover the total" do
+      shares = [{ weight: 0, minimum: Money.us_dollar(1) }]
+
+      expect { Money.us_dollar(2).allocate_with_constraints(shares) }
+        .to raise_error(ArgumentError, "amount is greater than the total maximum allocation")
+    end
+  end
+
   describe "#split" do
     it "needs at least one party" do
       expect { Money.us_dollar(1).split(0) }.to raise_error(ArgumentError)

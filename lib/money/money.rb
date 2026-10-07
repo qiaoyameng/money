@@ -7,6 +7,7 @@ require "money/money/constructors"
 require "money/money/formatter"
 require "money/money/allocation"
 require "money/money/locale_backend"
+require "money/money/constrained_allocation"
 
 # "Money is any object or record that is generally accepted as payment for
 # goods and services and repayment of debts in a given socio-economic context
@@ -18,8 +19,7 @@ require "money/money/locale_backend"
 #
 # @see https://en.wikipedia.org/wiki/Money
 class Money
-  include Comparable
-  include Money::Arithmetic
+  include Money::ConstrainedAllocation, Money::Arithmetic, Comparable # rubocop:disable Style/MixinGrouping
   extend Constructors
 
   # Raised when smallest denomination of a currency is not defined
