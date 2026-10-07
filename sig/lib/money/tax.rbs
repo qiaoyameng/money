@@ -1,0 +1,59 @@
+class Money
+  # Decomposes a tax-inclusive Money amount into its net (pre-tax) amount and
+  # the individual tax amounts it contains, using exact Rational arithmetic.
+  module Tax
+    # Raised when the tax definitions are invalid or the amount cannot be
+    # split into whole smallest units.
+    class Error < StandardError
+    end
+
+    # A single named tax rule.
+    class Definition
+      attr_reader name: Symbol
+
+      attr_reader rate: Rational
+
+      attr_reader on: Array[Symbol]
+
+      def initialize: (name: Symbol | String, rate: Integer | Rational | BigDecimal, ?on: Array[Symbol | String]) -> void
+    end
+
+    # A single computed tax component.
+    class Component
+      attr_reader name: Symbol
+
+      attr_reader rate: Rational
+
+      attr_reader amount: Money
+
+      attr_reader exact_amount: Rational
+
+      attr_reader adjustment: Integer
+
+      def initialize: (name: Symbol, rate: Rational, amount: Money, exact_amount: Rational, adjustment: Integer) -> void
+    end
+
+    # The result of decomposing a tax-inclusive amount.
+    class Breakdown
+      attr_reader net: Money
+
+      attr_reader taxes: Array[Component]
+
+      attr_reader exact_net: Rational
+
+      attr_reader net_adjustment: Integer
+
+      attr_reader remainder: Integer
+
+      def initialize: (net: Money, taxes: Array[Component], exact_net: Rational, net_adjustment: Integer) -> void
+
+      def tax: (Symbol | String name) -> Component?
+
+      def total_tax: () -> Money
+
+      def gross: () -> Money
+    end
+
+    def self.decompose: (Money money, Array[Definition | Hash[Symbol, untyped]] definitions) -> Breakdown
+  end
+end

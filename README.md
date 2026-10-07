@@ -503,6 +503,44 @@ To round to the nearest cash value in currencies without small denominations:
 Money.from_cents(11_11, "CHF").to_nearest_cash_value.format # => "CHF 11.10"
 ```
 
+## Tax Decomposition
+
+A tax-inclusive amount can be split back into its net amount and individual
+tax amounts with `Money::Tax.decompose`. Taxes are named and may include
+other taxes in their own base (tax-on-tax) via `:on`. Rates must be exact —
+Integer, Rational or BigDecimal; Float rates are rejected:
+
+```ruby
+taxes = [
+  { name: :gst, rate: BigDecimal("0.05") },
+  { name: :qst, rate: Rational(9975, 100_000), on: [:gst] }, # QST applies to net + GST
+]
+
+breakdown = Money::Tax.decompose(Money.from_cents(923_79, "CAD"), taxes)
+breakdown.net              # => Money.from_cents(800_00, "CAD")
+breakdown.tax(:gst).amount # => Money.from_cents(40_00, "CAD")
+breakdown.tax(:qst).amount # => Money.from_cents(83_79, "CAD")
+breakdown.gross            # => Money.from_cents(923_79, "CAD")
+```
+
+The net and tax amounts always sum exactly to the original amount in the
+currency's smallest unit. Rounding differences are distributed one unit at a
+time to the largest fractional remainders (ties broken by declaration order),
+and the pre-rounding exact values are exposed as Rationals:
+
+```ruby
+breakdown = Money::Tax.decompose(Money.from_cents(100, "USD"), [{ name: :vat, rate: Rational(7, 100) }])
+breakdown.net                    # => Money.from_cents(93, "USD")
+breakdown.tax(:vat).amount       # => Money.from_cents(7, "USD")
+breakdown.exact_net              # => (10000/107)
+breakdown.tax(:vat).exact_amount # => (700/107)
+breakdown.tax(:vat).adjustment   # => 1
+```
+
+Negative amounts are treated as refunds and decomposed by the same rule on
+their absolute value, then negated. Duplicate names, unknown or cyclic
+dependencies, and negative or Float rates raise `Money::Tax::Error`.
+
 ## Ruby on Rails
 
 To integrate money in a Rails application use [money-rails](https://github.com/RubyMoney/money-rails).
