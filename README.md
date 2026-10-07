@@ -245,6 +245,36 @@ Money.add_rate("USD", "EUR", 0.5)
 Money.from_cents(1000, "EUR") + Money.from_cents(1000, "USD") == Money.from_cents(1500, "EUR")
 ```
 
+### Batch exchange
+
+Exchanging many small amounts one by one and adding the rounded results often
+differs by a few cents from exchanging the summed amount. `Money.exchange_batch`
+exchanges a whole batch into a single target currency in one pass: the batch
+total is determined by adding the exact exchanged values and rounding once, and
+the remaining sub-unit difference is distributed over the items using the
+largest remainder method (ties are broken by input order), so the per-item
+amounts always add up to the total.
+
+```ruby
+Money.add_rate("USD", "EUR", 0.95)
+Money.add_rate("GBP", "EUR", 1.15)
+
+result = Money.exchange_batch(
+  [Money.from_cents(33, "USD"), Money.from_cents(7, "GBP"), Money.from_cents(-10, "USD")],
+  "EUR",
+)
+
+result.total       # => Money.from_cents(30, "EUR")
+result.to_a        # => [Money.from_cents(31, "EUR"), Money.from_cents(8, "EUR"), Money.from_cents(-9, "EUR")]
+result.items.first.adjustment  # => BigDecimal("-0.35"): this item's share of the rounding, in cents
+```
+
+A batch may mix source currencies and positive/negative amounts, but has one
+target currency. All rates are read once up front, and the whole batch fails
+with `Money::Bank::UnknownRate` if any rate is missing. Each item exposes its
+`source`, exchanged `money`, `exact` unrounded value and rounding `adjustment`,
+so every cent of the total can be accounted for.
+
 ### Exchange rate stores
 
 The default bank is initialized with an in-memory store for exchange rates.

@@ -1,0 +1,57 @@
+class Money
+  # Exchanges a batch of +Money+ objects into a single target currency in one
+  # pass, so that the exchanged amounts always add up to the batch total.
+  #
+  # The batch total is determined by adding the exact (unrounded) exchanged
+  # values and rounding once; the remaining sub-unit difference is
+  # distributed over the items using the largest remainder method, breaking
+  # ties by input order.
+  class BatchExchange
+    include Enumerable[Item]
+
+    # The outcome of exchanging a single +Money+ object within a batch.
+    class Item
+      # The original +Money+ object, unchanged.
+      attr_reader source: Money
+
+      # The exchanged amount in the target currency.
+      attr_reader money: Money
+
+      # The exact exchanged value in subunits of the target currency, before
+      # any rounding.
+      attr_reader exact: BigDecimal
+
+      # The rounding adjustment carried by this item, in subunits of the
+      # target currency (+money.fractional - exact+); its absolute value is
+      # always less than one subunit.
+      attr_reader adjustment: BigDecimal
+
+      def initialize: (source: Money, money: Money, exact: BigDecimal) -> void
+    end
+
+    # The single target currency of the batch.
+    attr_reader currency: Money::Currency
+
+    # The per-item outcomes, in input order.
+    attr_reader items: Array[Item]
+
+    # The batch total in the target currency; always equals the sum of the
+    # per-item amounts.
+    attr_reader total: Money
+
+    # The sum of the exact exchanged values in subunits of the target
+    # currency, before rounding.
+    attr_reader exact_total: BigDecimal
+
+    def initialize: (Array[Money] monies, (Money::Currency | string | Symbol) to_currency, ?bank: Money::Bank::VariableExchange) -> void
+
+    def each: () { (Item) -> void } -> void
+
+    # The exchanged amounts, in input order.
+    def to_a: () -> Array[Money]
+  end
+
+  # Exchanges a batch of +Money+ objects into a single target currency.
+  # See +Money::BatchExchange+ for the exact semantics.
+  def self.exchange_batch: (Array[Money] monies, (Money::Currency | string | Symbol) to_currency, ?bank: Money::Bank::VariableExchange) -> Money::BatchExchange
+end
